@@ -1,70 +1,115 @@
----
-
-### ขั้นที่ 1: เปิดไฟล์ใน IDE
-
-1. ดูที่แถบไฟล์ด้านซ้ายของโปรแกรม (Antigravity / VS Code)
-2. ดับเบิลคลิกเปิดไฟล์ **`lab04-ai-coding-ux/prompt-vs-context.md`**
-
----
-
-### ขั้นที่ 2: วางเนื้อหาลงในไฟล์
-
-1. กด **`Ctrl + A`** แล้วกด **`Backspace`** (ล้างเนื้อหาเดิมออก)
-2. คัดลอก (Copy) เนื้อหาด้านล่างนี้ทั้งหมด:
-
-```markdown
 # Prompt vs. Context Engineering Analysis - Lab 04
 
-การทดลองเปรียบเทียบผลลัพธ์ของโค้ดที่สร้างโดย AI ระหว่างการใช้เพียง Prompt ธรรมดา (Naive Prompt) กับการใช้ Context Engineering (การให้บริบท กฎทางธุรกิจ และสถาปัตยกรรมเดิม)
+การทดลองและเปรียบเทียบผลลัพธ์ระหว่างการสั่งงาน AI ด้วย Prompt ธรรมดา (Naive Prompt) กับการป้อนบริบทเชิงลึก (Context Engineering) ในระบบ Inventory Management
 
 ---
 
-## 1. การเปรียบเทียบคำสั่ง (Prompt Setup)
+## 1. การทดลองสั่งงานรอบที่ 1: Prompt ธรรมดา (ไม่มี Context)
 
-### แบบที่ 1: Naive Prompt (คำสั่งสั้น ไม่มีบริบท)
+### คำสั่ง Prompt (รอบที่ 1):
 ```text
-เขียนฟังก์ชันสำหรับระบบคลังสินค้า มีการเพิ่มสต็อก ลดสต็อก และคำนวณส่วนลดสินค้าให้หน่อย
+เขียนฟังก์ชัน sell_many ใน Python ให้หน่อย รับสต็อกสินค้ากับรายการที่ลูกค้าจะซื้อ ตัดสต็อกแล้วบอกว่าขายได้ไหม
 
 ```
 
-### แบบที่ 2: Context Engineering (คำสั่งที่มีบริบทเชิงลึก)
+### ผลลัพธ์โค้ดที่ AI สร้างขึ้น (รอบที่ 1):
+
+```python
+def sell_many(inventory, items_to_sell):
+    """
+    ลด stock สินค้าหลายรายการ
+    items_to_sell: dict ของ {item_name: quantity}
+    """
+    for item, qty in items_to_sell.items():
+        if item in inventory:
+            if inventory[item] >= qty:
+                inventory[item] -= qty
+            else:
+                return f"Error: สินค้า {item} มีไม่พอ"
+        else:
+            return f"Error: ไม่พบสินค้า {item}"
+    return "ขายสำเร็จทั้งหมด"
+
+```
+
+### การประเมินผลลัพธ์รอบที่ 1:
+
+1. **เข้ากับโค้ดเดิมไม่ได้ (Interface Mismatch):** AI สันนิษฐานว่า `inventory` คือ `dict[str, int]` ธรรมดา ไม่ได้เรียกใช้คลาส `Inventory` หรือออบเจกต์ `InventoryItem` ที่มีอยู่ในโปรเจกต์จริง
+2. **ละเมิดหลัก Atomicity อย่างร้ายแรง:** มีการหักยอดสินค้าชิ้นแรก ๆ ไปแล้ว (`inventory[item] -= qty`) ก่อนที่จะพบว่าสินค้าชิ้นถัดไปสต็อกไม่พอ ทำให้ข้อมูลสินค้าชิ้นแรกถูกหักไปฟรี ๆ โดยไม่มีการย้อนคืน (Rollback)
+3. **การจัดการ Exception ผิดหลักวิศวกรรม:** ส่งคืนข้อความ `str` แทนที่จะ Raise Exception ตามมาตรฐานของระบบ (เช่น `KeyError`, `ValueError`)
+4. **ไม่มีการตรวจสอบความถูกต้อง (Input Validation):** ไม่เช็กจำนวนติดลบหรือสต็อกที่เป็นศูนย์
+
+---
+
+## 2. การทดลองสั่งงานรอบที่ 2: Prompt ที่มี Context ครบถ้วน (Context Engineering)
+
+### บริบทที่ป้อนให้ AI (Context Provided):
+
+* **โครงสร้างคลาสเดิม:** อิงจาก `InventoryItem(id, name, price, quantity, is_digital)` และเมธอด `sell()` ใน `inventory.py`
+* **กฎทางธุรกิจ (Business Rules):**
+* การขายหลายรายการต้องทำงานแบบ **All-or-Nothing (Atomic)** หากชิ้นใดชิ้นหนึ่งไม่พอ ต้องไม่หักสินค้าใด ๆ เลย
+* ต้องตรวจสอบว่าจำนวนที่ขอซื้อ (`qty`) ต้องเป็นจำนวนเต็มบวก (`int > 0`)
+* หากสินค้าไม่พอหรือไม่มีสินค้า ต้องโยน `ValueError` หรือ `KeyError` ไม่ใช้การ return ข้อความสตริง
+
+
+
+### คำสั่ง Prompt (รอบที่ 2):
 
 ```text
-บริบทระบบ: เรากำลังพัฒนาระบบคลังสินค้า (Inventory Management) ภาษา Python ด้วยคลาส InventoryItem 
-ที่มี attributes คือ id, name, price, quantity และ is_digital
+บริบทระบบ: เรามีคลาส InventoryItem เก็บ attributes: name, price, quantity และมีคลาส Inventory เก็บ self.items: dict[str, InventoryItem]
+โดยใน InventoryItem มีเมธอด sell(amount: int) ซึ่งจะ raise ValueError หากจำนวนไม่พอหรือ amount <= 0
 
-กฎทางธุรกิจ (Business Rules & Constraints):
-1. ฟังก์ชัน restock(amount): amount ต้องเป็น int > 0 หากไม่ใช่ให้ raise ValueError
-2. ฟังก์ชัน sell(amount): amount ต้องเป็น int > 0 และ amount <= self.quantity 
-   หากของไม่พอ ห้ามเงียบ ให้ raise ValueError("สต็อกไม่เพียงพอ") ทันที
-3. ฟังก์ชัน calculate_discount(price, discount_percent): 
-   - price ต้อง >= 0
-   - discount_percent ต้องอยู่ในช่วง 0 ถึง 100
-   - คืนค่าทศนิยมปัดเศษ 2 ตำแหน่ง round(..., 2)
-4. ปฏิบัติตามหลัก Atomic Operation และ Clean Architecture
+โจทย์: จงเขียนเมธอด sell_many(self, items_to_sell: dict[str, int]) เพิ่มลงในคลาส Inventory
+ข้อกำหนด:
+1. ปฏิบัติตามหลัก Atomicity: ต้องตรวจสอบว่าสินค้าทุกรายการมีของพอขาย "ก่อน" เริ่มหักสต็อกจริง หากชิ้นใดไม่พอ ห้ามหักสต็อกรายการอื่น
+2. Input Validation: qty ต้องเป็นจำนวนเต็มบวก (> 0)
+3. Error Handling: หากไม่พบสินค้าให้ raise KeyError, หากสต็อกไม่พอให้ raise ValueError
 
-จงเขียนโค้ดทั้ง 3 เมธอดนี้ตามข้อกำหนดอย่างเคร่งครัด
+```
+
+### ผลลัพธ์โค้ดที่ AI สร้างขึ้น (รอบที่ 2):
+
+```python
+def sell_many(self, items_to_sell: dict[str, int]) -> dict[str, int]:
+    # 1. Validation & Pre-check (ตรวจสอบทุกรายการก่อนตัดสต็อกจริง)
+    for name, qty in items_to_sell.items():
+        if not isinstance(qty, int) or qty <= 0:
+            raise ValueError(f"จำนวนที่ต้องการซื้อของ '{name}' ต้องเป็นจำนวนเต็มบวก")
+        if name not in self.items:
+            raise KeyError(f"ไม่พบสินค้า '{name}' ในระบบคลัง")
+        if self.items[name].quantity < qty:
+            raise ValueError(
+                f"สต็อกไม่เพียงพอสำหรับ '{name}' (คงเหลือ {self.items[name].quantity}, ต้องการ {qty})"
+            )
+
+    # 2. Execution (หักสต็อกเมื่อผ่านเงื่อนไขครบทุกรายการ - Atomicity)
+    sold_summary = {}
+    for name, qty in items_to_sell.items():
+        self.items[name].sell(qty)
+        sold_summary[name] = qty
+
+    return sold_summary
 
 ```
 
 ---
 
-## 2. ตารางเปรียบเทียบผลลัพธ์ของโค้ดที่ได้ (Code Comparison)
+## 3. ตารางสรุปเปรียบเทียบผลลัพธ์ (Summary Matrix)
 
-| มิติการเปรียบเทียบ | โค้ดจาก Naive Prompt | โค้ดจาก Context Engineering |
+| ประเด็นเปรียบเทียบ | รอบที่ 1: Naive Prompt | รอบที่ 2: Context Engineering |
 | --- | --- | --- |
-| **Input Validation** | ❌ ขาดการตรวจค่าติดลบหรือประเภทข้อมูล | ✅ ตรวจสอบประเภทและค่าบวกครบถ้วน |
-| **Error Handling** | ❌ เกิด Silent Failure (return ค่าเดิมเงียบๆ) | ✅ โยน `ValueError` พร้อมข้อความชัดเจน |
-| **Boundary Conditions** | ❌ ใส่ส่วนลดติดลบหรือเกิน 100% ได้ | ✅ จำกัดขอบเขต `0 <= discount <= 100` |
-| **Floating Precision** | ❌ ทศนิยมยาวไม่รู้จบ (เช่น `.999999`) | ✅ มีการใช้ `round(..., 2)` เหมาะกับยอดเงิน |
-| **Integration** | ❌ โครงสร้างคลาสไม่เข้ากับระบบเดิม ต้องแก้ใหม่ | ✅ ใช้งานร่วมกับ `inventory.py` เดิมได้ทันที |
+| **ความเข้ากันได้กับระบบ (Compatibility)** | ❌ ใช้งานไม่ได้ ต้องเขียนใหม่ทั้งหมด | ✅ นำไปใส่ในคลาส `Inventory` ได้ทันที |
+| **ความปลอดภัยของข้อมูล (Atomicity)** | ❌ ข้อมูลพัง สินค้าหายหากเกิด error กลางทาง | ✅ ตรวจสอบล่วงหน้าครบก่อนหักสต็อกจริง |
+| **การจัดการข้อผิดพลาด (Error Handling)** | ❌ คืนสตริงข้อความธรรมดา (Silent Failure) | ✅ โยน Exception ชัดเจนตามประเภทข้อผิดพลาด |
+| **Input Validation** | ❌ ไม่มีการดักค่าติดลบหรือทศนิยม | ✅ ดักจับ `int <= 0` ครบถ้วน |
 
 ---
 
-## 3. สรุปผลการวิเคราะห์และข้อคิด (Key Insights)
+## 4. ข้อสรุปและบทเรียน (Key Takeaways)
 
-1. **AI มีแนวโน้มทำเฉพาะ Happy Path เมื่อไร้บริบท:** หากไม่ระบุข้อจำกัด AI จะเดาว่าข้อมูลนำเข้าถูกต้องเสมอ ส่งผลให้โค้ดขาดความทนทานต่อข้อผิดพลาด (Lack of Robustness)
-2. **Context สำคัญกว่า Prompt Syntax:** การอธิบายโมเดลข้อมูล กฎเกณฑ์ทางธุรกิจ และขอบเขตความปลอดภัย ให้ผลลัพธ์ที่มีคุณภาพสูงกว่าการพยายามสรรหาคำพูดสวยหรูใน Prompt
-3. **ลดเวลา Code Review และ Debug:** การลงทุนเวลาเตรียม Context เพียงเล็กน้อย ช่วยลดบั๊กที่จะหลุดเข้าสู่กระบวนการ Review ได้มากกว่า 70%
+1. **Context มีผลต่อคุณภาพมากกว่า Prompt Syntax:** AI ไม่สามารถเดาสถาปัตยกรรมเดิมของโปรเจกต์ได้ การให้ Context ของคลาสและ Business Rules ช่วยลดข้อผิดพลาดด้าน Logic ได้อย่างมหาศาล
+2. **AI มักมองข้ามความสมบูรณ์ของธุรกรรม (Transaction Integrity):** หากไม่เน้นย้ำเรื่อง Atomicity หรือ Rollback โค้ดที่สร้างโดย AI มักจะประมวลผลไปข้างหน้าทีละรายการโดยไม่คำนึงถึงผลข้างเคียงเมื่อเกิดข้อผิดพลาด
 
 ```
+
+---
