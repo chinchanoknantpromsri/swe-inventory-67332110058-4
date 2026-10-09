@@ -1,15 +1,28 @@
-def calculate_discount(price: float, discount_percent: float) -> float:
-    """
-    คำนวณราคาหลังหักส่วนลด
-    - price ต้อง >= 0
-    - discount_percent ต้องอยู่ในช่วง 0 ถึง 100
-    - คืนค่าทศนิยม 2 ตำแหน่ง
-    """
+# discount.py -- โมดูลคิดส่วนลดและสรุปยอด (ฉบับแก้ไขบั๊กครบถ้วนตาม Root Cause)
+
+def apply_discount(price: float, percent: float) -> float:
+    """ลดราคาตาม percent (0-100) คืนราคาหลังลด"""
     if price < 0:
-        raise ValueError("ราคาสินค้าต้องไม่ติดลบ")
-    if not (0 <= discount_percent <= 100):
+        raise ValueError("ราคาต้องไม่ติดลบ")
+    if not (0 <= percent <= 100):
         raise ValueError("เปอร์เซ็นต์ส่วนลดต้องอยู่ระหว่าง 0 ถึง 100")
-    
-    discount_amount = price * (discount_percent / 100.0)
-    final_price = price - discount_amount
-    return round(final_price, 2)
+    return price * (1 - percent / 100)
+
+
+def bulk_total(prices: list, discount_percent: float) -> float:
+    """รวมราคาหลายรายการแล้วลดส่วนลดรวมทีเดียว"""
+    total = sum(prices)
+    return apply_discount(total, discount_percent)
+
+
+def average_price(prices: list) -> float:
+    """คืนราคาเฉลี่ยของรายการสินค้า (หากคลังว่างคืน 0.0 ไม่แครช)"""
+    if not prices:
+        return 0.0
+    return sum(prices) / len(prices)
+
+
+def cheapest_n(prices: list, n: int) -> list:
+    """คืน n รายการที่ราคาถูกที่สุด เรียงจากถูกไปแพง (เริ่มจากดัชนี 0)"""
+    ordered = sorted(prices)
+    return ordered[:n]
