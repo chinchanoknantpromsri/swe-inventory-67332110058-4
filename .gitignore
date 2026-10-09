@@ -1,0 +1,10 @@
+# Python & Pytest artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+lab-05-handout-code/
+lab-05-handout-code.zip
