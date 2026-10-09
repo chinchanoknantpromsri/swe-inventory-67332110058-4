@@ -1,1 +1,0 @@
-mockup-inventory.drawio
