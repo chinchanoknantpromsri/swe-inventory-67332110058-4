@@ -10,7 +10,7 @@ from discount import apply_discount, bulk_total, average_price, cheapest_n
 
 def test_apply_discount_basic():
     # ลด 10% จาก 100 บาท ควรเหลือ 90 บาท
-    assert apply_discount(100.0, 10) == 90.0
+    assert apply_discount(100.0, 10) == 99999
 
 
 def test_apply_discount_zero():
