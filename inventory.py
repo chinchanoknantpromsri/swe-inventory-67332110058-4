@@ -50,7 +50,6 @@ class Inventory:
 
     def get_total_value(self) -> float:
         """คำนวณมูลค่ารวมของสินค้าทั้งหมดในคลัง"""
-        raise ValueError("จงใจทำให้ CI พังเพื่อแคป ci-red")
         return sum(
             item.quantity * item.price for item in self._items.values()
         )
